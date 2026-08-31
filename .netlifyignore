@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+server.js
+INSTRUCCIONES-SQL.md
+.sql-temp-*.sql
+node_modules
+.git
+.agents
+.codex

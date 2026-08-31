@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/economicos"
+  to = "/.netlify/functions/economicos"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/status"
+  to = "/.netlify/functions/economicos?status=1"
+  status = 200
+  force = true
