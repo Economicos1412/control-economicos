@@ -111,11 +111,24 @@ evidenceObserver.observe(body,{childList:true,subtree:true});
 renderEvidenceGallery();
 
 const maintenanceDialog=$('#maintenanceDialog'),maintenanceForm=$('#maintenanceForm');
+function renderMaintenanceFilters(){
+  const yearFilter=$('#maintenanceYearFilter'),economicFilter=$('#maintenanceEconomicFilter');
+  if(!yearFilter||!economicFilter)return;
+  const currentYear=String(new Date().getFullYear());
+  const years=[...new Set([currentYear,...records.flatMap(record=>(record.mantenimientos||[]).map(item=>String(item.fecha||'').slice(0,4)).filter(Boolean))])].sort((a,b)=>b.localeCompare(a));
+  const selectedYear=yearFilter.value||currentYear,selectedEconomic=economicFilter.value;
+  yearFilter.innerHTML=years.map(year=>`<option value="${year}" ${year===selectedYear?'selected':''}>Bitácora ${year}</option>`).join('');
+  economicFilter.innerHTML='<option value="">Todos los económicos</option>'+[...records].sort((a,b)=>String(a.economico).localeCompare(String(b.economico),undefined,{numeric:true})).map(record=>`<option value="${record.id}" ${record.id===selectedEconomic?'selected':''}>Eco. ${esc(record.economico)} · ${esc(record.marca)}</option>`).join('');
+}
 function renderMaintenanceHistory(){
   const list=$('#maintenanceList');
   if(!list)return;
-  const entries=records.flatMap(record=>(record.mantenimientos||[]).map(item=>({...item,record}))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
-  list.innerHTML=entries.length?entries.map(item=>`<article class="maintenance-entry"><div class="maintenance-date">${formatDate(item.fecha)}</div><div><h3>Eco. ${esc(item.record.economico)} · ${esc(item.tipo)}</h3><p>${esc(item.descripcion)}</p><small>${esc(item.record.marca)} ${esc(item.record.modelo)} · Responsable: ${esc(item.responsable)}</small></div><span class="maintenance-result ${item.resultado==='operativo'?'ok':'pending'}">${item.resultado==='operativo'?'Concluido':'En mantenimiento'}</span></article>`).join(''):'<div class="maintenance-empty">Aún no hay mantenimientos registrados.<br />Usa <strong>Registrar mantenimiento</strong> para crear el primer historial.</div>';
+  renderMaintenanceFilters();
+  const year=$('#maintenanceYearFilter').value,economicId=$('#maintenanceEconomicFilter').value;
+  const entries=records.flatMap(record=>(record.mantenimientos||[]).map(item=>({...item,record}))).filter(item=>String(item.fecha||'').startsWith(year)).filter(item=>!economicId||item.record.id===economicId).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const completed=entries.filter(item=>item.resultado==='operativo').length,units=new Set(entries.map(item=>item.record.id)).size;
+  $('#maintenanceSummary').innerHTML=`<article><span>REGISTROS EN ${year}</span><strong>${entries.length}</strong></article><article><span>ECONÓMICOS ATENDIDOS</span><strong>${units}</strong></article><article><span>TRABAJOS CONCLUIDOS</span><strong>${completed}</strong></article>`;
+  list.innerHTML=entries.length?entries.map(item=>`<article class="maintenance-entry"><div class="maintenance-date">${formatDate(item.fecha)}</div><div><h3>Eco. ${esc(item.record.economico)} · ${esc(item.tipo)}</h3><p>${esc(item.descripcion)}</p><small>${esc(item.record.marca)} ${esc(item.record.modelo)} · Responsable: ${esc(item.responsable)}</small></div><span class="maintenance-result ${item.resultado==='operativo'?'ok':'pending'}">${item.resultado==='operativo'?'Concluido':'En mantenimiento'}</span></article>`).join(''):`<div class="maintenance-empty">No hay mantenimientos registrados para ${economicId?'este económico':'la flota'} en ${year}.<br />Usa <strong>Registrar mantenimiento</strong> para agregar una intervención.</div>`;
 }
 function openMaintenanceDialog(){
   maintenanceForm.reset();
@@ -125,6 +138,7 @@ function openMaintenanceDialog(){
 }
 $('#newMaintenanceButton').onclick=openMaintenanceDialog;
 $('#closeMaintenanceDialog').onclick=$('#cancelMaintenanceButton').onclick=()=>maintenanceDialog.close();
+$('#maintenanceYearFilter').onchange=$('#maintenanceEconomicFilter').onchange=renderMaintenanceHistory;
 maintenanceForm.onsubmit=event=>{
   event.preventDefault();
   const data=Object.fromEntries(new FormData(maintenanceForm)),record=records.find(item=>item.id===data.economicoId);
