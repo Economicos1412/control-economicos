@@ -69,3 +69,34 @@ const fleetChartObserver=new MutationObserver(renderFleetStatusChart);
 fleetChartObserver.observe($('#totalMetric'),{childList:true,characterData:true,subtree:true});
 fleetChartObserver.observe($('#attentionMetric'),{childList:true,characterData:true,subtree:true});
 renderFleetStatusChart();
+
+function renderEvidenceGallery(){
+  const grid=$('#evidenceGrid'),count=$('#evidenceCount');
+  if(!grid||!count)return;
+  const totalPhotos=records.reduce((sum,record)=>sum+(record.photos?.length||0),0);
+  count.textContent=`${records.length} hidráulicos · ${totalPhotos} evidencias`;
+  if(!records.length){grid.innerHTML='<div class="evidence-empty">No hay hidráulicos registrados para mostrar evidencias.</div>';return}
+  grid.innerHTML=[...records].sort((a,b)=>(b.photos?.length||0)-(a.photos?.length||0)).map(record=>{
+    const photos=record.photos||[],preview=photos[0]?.dataUrl?`<img src="${photos[0].dataUrl}" alt="Evidencia del económico ${esc(record.economico)}" />`:'<span>▧</span>';
+    const status=record.estado==='operativo'?'En condiciones':'En mantenimiento';
+    return `<article class="evidence-card"><div class="evidence-preview">${preview}</div><div class="evidence-card-body"><div class="evidence-card-top"><div><h2>Eco. ${esc(record.economico)}</h2><p>${esc(record.marca)} · ${esc(record.modelo)}</p></div><span class="category">${esc(record.categoria)}</span></div><div class="evidence-meta"><span>${photos.length} foto${photos.length===1?'':'s'} · ${status}</span><button class="evidence-open" data-evidence-id="${record.id}">Ver ficha →</button></div></div></article>`
+  }).join('');
+}
+
+document.querySelectorAll('.nav-item[data-view]').forEach(item=>item.addEventListener('click',()=>{
+  const view=item.dataset.view;
+  if(view!=='units'&&view!=='evidences'){toast('Este módulo estará disponible próximamente.');return}
+  $('#unitsView').classList.toggle('is-hidden',view!=='units');
+  $('#evidencesView').classList.toggle('is-active',view==='evidences');
+  document.querySelectorAll('.nav-item[data-view]').forEach(nav=>nav.classList.toggle('active',nav===item));
+  if(view==='evidences')renderEvidenceGallery();
+}));
+
+$('#evidenceGrid').onclick=event=>{
+  const id=event.target.dataset.evidenceId;
+  if(id){const record=records.find(item=>item.id===id);if(record)openPhotos(record)}
+};
+
+const evidenceObserver=new MutationObserver(renderEvidenceGallery);
+evidenceObserver.observe(body,{childList:true,subtree:true});
+renderEvidenceGallery();
