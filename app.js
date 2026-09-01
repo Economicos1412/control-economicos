@@ -73,10 +73,12 @@ renderFleetStatusChart();
 function renderEvidenceGallery(){
   const grid=$('#evidenceGrid'),count=$('#evidenceCount');
   if(!grid||!count)return;
-  const totalPhotos=records.reduce((sum,record)=>sum+(record.photos?.length||0),0);
-  count.textContent=`${records.length} hidráulicos · ${totalPhotos} evidencias`;
-  if(!records.length){grid.innerHTML='<div class="evidence-empty">No hay hidráulicos registrados para mostrar evidencias.</div>';return}
-  grid.innerHTML=[...records].sort((a,b)=>(b.photos?.length||0)-(a.photos?.length||0)).map(record=>{
+  const query=$('#evidenceSearch')?.value.trim().toLowerCase()||'',state=$('#evidenceStatusFilter')?.value||'';
+  const visible=records.filter(record=>!query||[record.economico,record.marca,record.modelo].join(' ').toLowerCase().includes(query)).filter(record=>!state||record.estado===state);
+  const totalPhotos=visible.reduce((sum,record)=>sum+(record.photos?.length||0),0);
+  count.textContent=`${visible.length} de ${records.length} hidráulicos · ${totalPhotos} evidencias`;
+  if(!visible.length){grid.innerHTML='<div class="evidence-empty">No hay hidráulicos que coincidan con los filtros seleccionados.</div>';return}
+  grid.innerHTML=[...visible].sort((a,b)=>(b.photos?.length||0)-(a.photos?.length||0)).map(record=>{
     const photos=record.photos||[],preview=photos[0]?.dataUrl?`<img src="${photos[0].dataUrl}" alt="Evidencia del económico ${esc(record.economico)}" />`:'<span>▧</span>';
     const isOperational=record.estado==='operativo',status=isOperational?'En condiciones':'En mantenimiento';
     return `<article class="evidence-card ${isOperational?'evidence-operational':'evidence-maintenance'}"><div class="evidence-preview">${preview}</div><div class="evidence-card-body"><div class="evidence-card-top"><div><h2>Eco. ${esc(record.economico)}</h2><p>${esc(record.marca)} · ${esc(record.modelo)}</p></div><span class="category">${esc(record.categoria)}</span></div><div class="evidence-meta"><span class="evidence-status">${photos.length} foto${photos.length===1?'':'s'} · ${status}</span><button class="evidence-open" data-evidence-id="${record.id}">Ver ficha →</button></div></div></article>`
@@ -96,6 +98,11 @@ $('#evidenceGrid').onclick=event=>{
   const id=event.target.dataset.evidenceId;
   if(id){const record=records.find(item=>item.id===id);if(record)openPhotos(record)}
 };
+
+['input','change'].forEach(event=>{
+  $('#evidenceSearch').addEventListener(event,renderEvidenceGallery);
+  $('#evidenceStatusFilter').addEventListener(event,renderEvidenceGallery);
+});
 
 const evidenceObserver=new MutationObserver(renderEvidenceGallery);
 evidenceObserver.observe(body,{childList:true,subtree:true});
