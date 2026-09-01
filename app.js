@@ -78,8 +78,8 @@ function renderEvidenceGallery(){
   if(!records.length){grid.innerHTML='<div class="evidence-empty">No hay hidráulicos registrados para mostrar evidencias.</div>';return}
   grid.innerHTML=[...records].sort((a,b)=>(b.photos?.length||0)-(a.photos?.length||0)).map(record=>{
     const photos=record.photos||[],preview=photos[0]?.dataUrl?`<img src="${photos[0].dataUrl}" alt="Evidencia del económico ${esc(record.economico)}" />`:'<span>▧</span>';
-    const status=record.estado==='operativo'?'En condiciones':'En mantenimiento';
-    return `<article class="evidence-card"><div class="evidence-preview">${preview}</div><div class="evidence-card-body"><div class="evidence-card-top"><div><h2>Eco. ${esc(record.economico)}</h2><p>${esc(record.marca)} · ${esc(record.modelo)}</p></div><span class="category">${esc(record.categoria)}</span></div><div class="evidence-meta"><span>${photos.length} foto${photos.length===1?'':'s'} · ${status}</span><button class="evidence-open" data-evidence-id="${record.id}">Ver ficha →</button></div></div></article>`
+    const isOperational=record.estado==='operativo',status=isOperational?'En condiciones':'En mantenimiento';
+    return `<article class="evidence-card ${isOperational?'evidence-operational':'evidence-maintenance'}"><div class="evidence-preview">${preview}</div><div class="evidence-card-body"><div class="evidence-card-top"><div><h2>Eco. ${esc(record.economico)}</h2><p>${esc(record.marca)} · ${esc(record.modelo)}</p></div><span class="category">${esc(record.categoria)}</span></div><div class="evidence-meta"><span class="evidence-status">${photos.length} foto${photos.length===1?'':'s'} · ${status}</span><button class="evidence-open" data-evidence-id="${record.id}">Ver ficha →</button></div></div></article>`
   }).join('');
 }
 
