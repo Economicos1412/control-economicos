@@ -4,7 +4,7 @@ const seedRecords = [
 const storageKey='control-economicos-records-v1';
 const sourceAmounts={86923:'54570.00',88501:'133580.00',108500:'11280.00',105887:'48700.00',105061:'17560.00'};
 let records=JSON.parse(localStorage.getItem(storageKey)||'null')||seedRecords, editingId=null, photoRecordId=null, selectedIds=new Set(), viewerScale=1, viewerX=0, viewerY=0, dragStart=null;
-records=records.map(record=>({...record,monto:(record.monto==null||record.monto==='')?(sourceAmounts[record.economico]||''):record.monto,estado:record.estado||(/en condiciones/i.test(record.observaciones)?'operativo':'mantenimiento')}));
+records=records.map(record=>({...record,monto:(record.monto==null||record.monto==='')?(sourceAmounts[record.economico]||''):record.monto,estado:record.estado||(/en condiciones/i.test(record.observaciones)?'operativo':'mantenimiento'),mantenimientos:Array.isArray(record.mantenimientos)?record.mantenimientos:[]}));
 const $=s=>document.querySelector(s), body=$('#recordsBody'), dialog=$('#recordDialog'), form=$('#recordForm');
 const esc=v=>String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const save=()=>{localStorage.setItem(storageKey,JSON.stringify(records));if(location.protocol!=='file:')fetch('/api/economicos',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(records)}).then(response=>{if(!response.ok)throw new Error('No se pudo sincronizar')}).catch(()=>toast('Cambios guardados localmente; no se pudo sincronizar con la base de datos.'))};
@@ -48,7 +48,7 @@ const excelDate=value=>{if(/^\d{4}-\d{2}-\d{2}$/.test(String(value)))return Stri
 function rowsToRecords(rows){const headerIndex=rows.findIndex(row=>expectedHeaders.every(header=>row.map(normalizeHeader).includes(header)));if(headerIndex<0)throw new Error('No encontré las nueve columnas requeridas.');const map=expectedHeaders.map(header=>rows[headerIndex].map(normalizeHeader).indexOf(header)),amountIndex=rows[headerIndex].map(normalizeHeader).indexOf('monto');const result=rows.slice(headerIndex+1).filter(row=>map.some(index=>String(row[index]??'').trim())).map(row=>({id:crypto.randomUUID(),economico:String(row[map[0]]??'').trim(),marca:String(row[map[1]]??'').trim(),modelo:String(row[map[2]]??'').trim(),serie:String(row[map[3]]??'').trim(),categoria:String(row[map[4]]??'').trim(),folio:String(row[map[5]]??'').trim(),area:String(row[map[6]]??'').trim(),fecha:excelDate(row[map[7]]),observaciones:String(row[map[8]]??'').trim(),monto:amountIndex<0?'':String(row[amountIndex]??'').replace(/[$,\s]/g,'')})).filter(r=>r.economico&&r.marca&&r.fecha);if(!result.length)throw new Error('El archivo no contiene registros válidos.');return result}
 async function readXlsx(file){const buffer=await file.arrayBuffer(),view=new DataView(buffer),bytes=new Uint8Array(buffer),decoder=new TextDecoder();let cursor=bytes.length-22;while(cursor>=0&&view.getUint32(cursor,true)!==0x06054b50)cursor--;if(cursor<0)throw new Error('El archivo Excel no es válido.');let offset=view.getUint32(cursor+16,true),count=view.getUint16(cursor+10,true),entries={};for(let i=0;i<count;i++){if(view.getUint32(offset,true)!==0x02014b50)break;const method=view.getUint16(offset+10,true),compressed=view.getUint32(offset+20,true),nameLength=view.getUint16(offset+28,true),extraLength=view.getUint16(offset+30,true),commentLength=view.getUint16(offset+32,true),localOffset=view.getUint32(offset+42,true),name=decoder.decode(bytes.slice(offset+46,offset+46+nameLength));entries[name]={method,compressed,localOffset};offset+=46+nameLength+extraLength+commentLength}async function entry(name){const item=entries[name];if(!item)return '';const start=item.localOffset,namelen=view.getUint16(start+26,true),extralength=view.getUint16(start+28,true),data=bytes.slice(start+30+namelen+extralength,start+30+namelen+extralength+item.compressed);if(item.method===0)return decoder.decode(data);if(item.method===8){const stream=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return decoder.decode(await new Response(stream).arrayBuffer())}throw new Error('El Excel usa una compresión no compatible.')}const sharedXml=await entry('xl/sharedStrings.xml'),shared=sharedXml?[...new DOMParser().parseFromString(sharedXml,'application/xml').querySelectorAll('si')].map(node=>node.textContent||''):[];let sheetName=Object.keys(entries).find(name=>/^xl\/worksheets\/sheet\d+\.xml$/.test(name));if(!sheetName)throw new Error('No encontré una hoja con datos.');const xml=await entry(sheetName),doc=new DOMParser().parseFromString(xml,'application/xml'),rows=[];for(const row of doc.querySelectorAll('sheetData > row')){const values=[];for(const cell of row.querySelectorAll('c')){const match=(cell.getAttribute('r')||'').match(/[A-Z]+/),letters=match?.[0]||'A';let index=0;for(const letter of letters)index=index*26+letter.charCodeAt(0)-64;const raw=cell.querySelector('v')?.textContent??cell.querySelector('is')?.textContent??'',type=cell.getAttribute('t');values[index-1]=type==='s'?shared[Number(raw)]??'':raw}rows.push(values)}return rows}
 $('#importInput').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{let rows;if(file.name.toLowerCase().endsWith('.xlsx'))rows=await readXlsx(file);else{const text=await file.text();rows=text.split(/\r?\n/).filter(Boolean).map(row=>row.match(/("(?:[^"]|"")*"|[^,]*)(?=,|$)/g)?.map(v=>v.replace(/^"|"$/g,'').replaceAll('""','"').trim())||[])}const imported=rowsToRecords(rows);records=[...records.filter(r=>!imported.some(i=>i.economico===r.economico)),...imported];save();renderFilters();render();toast(`${imported.length} registros importados desde ${file.name}.`)}catch(error){toast(error.message||'No se pudo importar el archivo.')}finally{e.target.value=''}};
-async function loadFromSql(){if(location.protocol==='file:')return;try{const response=await fetch('/api/economicos');if(!response.ok)throw new Error('No se pudo conectar con el servidor.');const remote=await response.json();if(remote.length){records=remote.map(record=>({...record,monto:record.monto??'',photos:record.photos||[],estado:record.estado||(/en condiciones/i.test(record.observaciones)?'operativo':'mantenimiento')}));save();renderFilters();render();toast('Datos sincronizados correctamente.')}else if(records.length){const sync=await fetch('/api/economicos',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(records)});if(!sync.ok)throw new Error('No se pudo migrar la información local.');toast('Datos locales sincronizados correctamente.')}}catch{toast('Trabajando con los datos locales.')}}
+async function loadFromSql(){if(location.protocol==='file:')return;try{const response=await fetch('/api/economicos');if(!response.ok)throw new Error('No se pudo conectar con el servidor.');const remote=await response.json();if(remote.length){records=remote.map(record=>({...record,monto:record.monto??'',photos:record.photos||[],mantenimientos:Array.isArray(record.mantenimientos)?record.mantenimientos:[],estado:record.estado||(/en condiciones/i.test(record.observaciones)?'operativo':'mantenimiento')}));save();renderFilters();render();toast('Datos sincronizados correctamente.')}else if(records.length){const sync=await fetch('/api/economicos',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(records)});if(!sync.ok)throw new Error('No se pudo migrar la información local.');toast('Datos locales sincronizados correctamente.')}}catch{toast('Trabajando con los datos locales.')}}
 renderFilters();render();loadFromSql();
 
 function renderFleetStatusChart(){
@@ -87,11 +87,13 @@ function renderEvidenceGallery(){
 
 document.querySelectorAll('.nav-item[data-view]').forEach(item=>item.addEventListener('click',()=>{
   const view=item.dataset.view;
-  if(view!=='units'&&view!=='evidences'){toast('Este módulo estará disponible próximamente.');return}
+  if(!['units','evidences','maintenance'].includes(view)){toast('Este módulo estará disponible próximamente.');return}
   $('#unitsView').classList.toggle('is-hidden',view!=='units');
   $('#evidencesView').classList.toggle('is-active',view==='evidences');
+  $('#maintenanceView').classList.toggle('is-active',view==='maintenance');
   document.querySelectorAll('.nav-item[data-view]').forEach(nav=>nav.classList.toggle('active',nav===item));
   if(view==='evidences')renderEvidenceGallery();
+  if(view==='maintenance')renderMaintenanceHistory();
 }));
 
 $('#evidenceGrid').onclick=event=>{
@@ -107,3 +109,33 @@ $('#evidenceGrid').onclick=event=>{
 const evidenceObserver=new MutationObserver(renderEvidenceGallery);
 evidenceObserver.observe(body,{childList:true,subtree:true});
 renderEvidenceGallery();
+
+const maintenanceDialog=$('#maintenanceDialog'),maintenanceForm=$('#maintenanceForm');
+function renderMaintenanceHistory(){
+  const list=$('#maintenanceList');
+  if(!list)return;
+  const entries=records.flatMap(record=>(record.mantenimientos||[]).map(item=>({...item,record}))).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  list.innerHTML=entries.length?entries.map(item=>`<article class="maintenance-entry"><div class="maintenance-date">${formatDate(item.fecha)}</div><div><h3>Eco. ${esc(item.record.economico)} · ${esc(item.tipo)}</h3><p>${esc(item.descripcion)}</p><small>${esc(item.record.marca)} ${esc(item.record.modelo)} · Responsable: ${esc(item.responsable)}</small></div><span class="maintenance-result ${item.resultado==='operativo'?'ok':'pending'}">${item.resultado==='operativo'?'Concluido':'En mantenimiento'}</span></article>`).join(''):'<div class="maintenance-empty">Aún no hay mantenimientos registrados.<br />Usa <strong>Registrar mantenimiento</strong> para crear el primer historial.</div>';
+}
+function openMaintenanceDialog(){
+  maintenanceForm.reset();
+  $('#maintenanceEconomic').innerHTML='<option value="" disabled selected>Selecciona un económico</option>'+records.map(record=>`<option value="${record.id}">${esc(record.economico)} · ${esc(record.marca)} ${esc(record.modelo)}</option>`).join('');
+  maintenanceForm.elements.fecha.value=new Date().toISOString().slice(0,10);
+  maintenanceDialog.showModal();
+}
+$('#newMaintenanceButton').onclick=openMaintenanceDialog;
+$('#closeMaintenanceDialog').onclick=$('#cancelMaintenanceButton').onclick=()=>maintenanceDialog.close();
+maintenanceForm.onsubmit=event=>{
+  event.preventDefault();
+  const data=Object.fromEntries(new FormData(maintenanceForm)),record=records.find(item=>item.id===data.economicoId);
+  if(!record){toast('Selecciona un económico válido.');return}
+  const entry={id:crypto.randomUUID(),fecha:data.fecha,tipo:data.tipo,responsable:data.responsable.trim(),descripcion:data.descripcion.trim(),resultado:data.resultado};
+  record.mantenimientos=[...(record.mantenimientos||[]),entry];
+  record.estado=data.resultado;
+  record.observaciones=data.resultado==='operativo'?'En condiciones para trabajar':entry.descripcion;
+  save();render();renderMaintenanceHistory();maintenanceDialog.close();toast('Mantenimiento guardado en el historial.');
+};
+
+const maintenanceObserver=new MutationObserver(renderMaintenanceHistory);
+maintenanceObserver.observe(body,{childList:true,subtree:true});
+renderMaintenanceHistory();
