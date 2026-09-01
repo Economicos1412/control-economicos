@@ -6,6 +6,14 @@
     <meta name="theme-color" content="#102c24" />
     <title>Control de Economicos</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .status-chart{justify-content:center;gap:52px;padding-left:20%;padding-right:20%}
+      .status-chart span{flex:0 1 145px;min-width:90px}
+      .status-chart span b{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);color:#fff;font-size:1.05rem}
+      .status-chart .bar-operational{background:linear-gradient(180deg,#7be2af,#24966c)}
+      .status-chart .bar-maintenance{background:linear-gradient(180deg,#f0ab58,#c66c2f);box-shadow:0 0 18px #dd9b2824}
+      @media(max-width:450px){.status-chart{gap:25px;padding-left:10%;padding-right:10%}}
+    </style>
   </head>
   <body>
     <main class="shell">
@@ -52,9 +60,8 @@
 
         <section class="dashboard-grid" aria-label="Vista general de operación">
           <article class="chart-card">
-            <div class="panel-heading"><div><p class="overline">PANORAMA OPERATIVO</p><h2>Estado de la flota</h2><p>Distribución semanal de registros y atención.</p></div><span class="panel-action">Últimos 7 días</span></div>
-            <div class="bar-chart" aria-label="Gráfica decorativa de actividad semanal">
-              <span style="--h:47%"><i>L</i></span><span style="--h:66%"><i>M</i></span><span style="--h:82%"><i>M</i></span><span style="--h:55%"><i>J</i></span><span style="--h:91%"><i>V</i></span><span style="--h:62%"><i>S</i></span><span style="--h:73%"><i>D</i></span>
+            <div class="panel-heading"><div><p class="overline">PANORAMA OPERATIVO</p><h2>Estado de la flota</h2><p>Distribución actual de los económicos registrados.</p></div><span class="panel-action" id="fleetStatusSummary">Cargando...</span></div>
+            <div class="bar-chart status-chart" id="fleetStatusChart" aria-label="Gráfica de estados de los económicos">
             </div>
           </article>
           <article class="status-panel">
@@ -121,6 +128,6 @@
       <div class="viewer-stage" id="viewerStage"><img id="viewerImage" alt="Foto ampliada del economico" /></div>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
-    <script src="app.js"></script>
+    <script src="app.js?v=20260901-status"></script>
   </body>
 </html>

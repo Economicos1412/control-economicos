@@ -50,3 +50,22 @@ async function readXlsx(file){const buffer=await file.arrayBuffer(),view=new Dat
 $('#importInput').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{let rows;if(file.name.toLowerCase().endsWith('.xlsx'))rows=await readXlsx(file);else{const text=await file.text();rows=text.split(/\r?\n/).filter(Boolean).map(row=>row.match(/("(?:[^"]|"")*"|[^,]*)(?=,|$)/g)?.map(v=>v.replace(/^"|"$/g,'').replaceAll('""','"').trim())||[])}const imported=rowsToRecords(rows);records=[...records.filter(r=>!imported.some(i=>i.economico===r.economico)),...imported];save();renderFilters();render();toast(`${imported.length} registros importados desde ${file.name}.`)}catch(error){toast(error.message||'No se pudo importar el archivo.')}finally{e.target.value=''}};
 async function loadFromSql(){if(location.protocol==='file:')return;try{const response=await fetch('/api/economicos');if(!response.ok)throw new Error('No se pudo conectar con el servidor.');const remote=await response.json();if(remote.length){records=remote.map(record=>({...record,monto:record.monto??'',photos:record.photos||[],estado:record.estado||(/en condiciones/i.test(record.observaciones)?'operativo':'mantenimiento')}));save();renderFilters();render();toast('Datos sincronizados correctamente.')}else if(records.length){const sync=await fetch('/api/economicos',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(records)});if(!sync.ok)throw new Error('No se pudo migrar la información local.');toast('Datos locales sincronizados correctamente.')}}catch{toast('Trabajando con los datos locales.')}}
 renderFilters();render();loadFromSql();
+
+function renderFleetStatusChart(){
+  const chart=$('#fleetStatusChart'),summary=$('#fleetStatusSummary');
+  if(!chart||!summary)return;
+  const operational=records.filter(record=>record.estado==='operativo').length;
+  const maintenance=records.filter(record=>record.estado==='mantenimiento').length;
+  const max=Math.max(operational,maintenance,1);
+  const data=[
+    {label:'Operativos',count:operational,className:'bar-operational'},
+    {label:'Mantenimiento',count:maintenance,className:'bar-maintenance'}
+  ];
+  chart.innerHTML=data.map(item=>`<span class="${item.className}" style="--h:${Math.max(12,Math.round(item.count/max*90))}%"><b>${item.count}</b><i>${item.label}</i></span>`).join('');
+  summary.textContent=`${operational} operativos · ${maintenance} en mantenimiento`;
+}
+
+const fleetChartObserver=new MutationObserver(renderFleetStatusChart);
+fleetChartObserver.observe($('#totalMetric'),{childList:true,characterData:true,subtree:true});
+fleetChartObserver.observe($('#attentionMetric'),{childList:true,characterData:true,subtree:true});
+renderFleetStatusChart();
