@@ -128,7 +128,7 @@ function renderMaintenanceHistory(){
   const entries=records.flatMap(record=>(record.mantenimientos||[]).map(item=>({...item,record}))).filter(item=>String(item.fecha||'').startsWith(year)).filter(item=>!economicId||item.record.id===economicId).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   const completed=entries.filter(item=>item.resultado==='operativo').length,units=new Set(entries.map(item=>item.record.id)).size;
   $('#maintenanceSummary').innerHTML=`<article><span>REGISTROS EN ${year}</span><strong>${entries.length}</strong></article><article><span>ECONÓMICOS ATENDIDOS</span><strong>${units}</strong></article><article><span>TRABAJOS CONCLUIDOS</span><strong>${completed}</strong></article>`;
-  list.innerHTML=entries.length?entries.map(item=>`<article class="maintenance-entry"><div class="maintenance-date">${formatDate(item.fecha)}</div><div><h3>Eco. ${esc(item.record.economico)} · ${esc(item.tipo)}</h3><p>${esc(item.descripcion)}</p><small>${esc(item.record.marca)} ${esc(item.record.modelo)} · Responsable: ${esc(item.responsable)}</small></div><span class="maintenance-result ${item.resultado==='operativo'?'ok':'pending'}">${item.resultado==='operativo'?'Concluido':'En mantenimiento'}</span></article>`).join(''):`<div class="maintenance-empty">No hay mantenimientos registrados para ${economicId?'este económico':'la flota'} en ${year}.<br />Usa <strong>Registrar mantenimiento</strong> para agregar una intervención.</div>`;
+  list.innerHTML=entries.length?entries.map(item=>`<article class="maintenance-entry"><div class="maintenance-date">${formatDate(item.fecha)}</div><div><h3>Eco. ${esc(item.record.economico)} · ${esc(item.tipo)}</h3><p>${esc(item.descripcion)}</p><small>${esc(item.record.marca)} ${esc(item.record.modelo)} · Responsable: ${esc(item.responsable)}</small>${item.comentarioCierre?`<small><strong>Cierre:</strong> ${esc(item.comentarioCierre)}</small>`:''}${item.resultado==='mantenimiento'?`<button class="finish-maintenance" type="button" data-finish-record="${item.record.id}" data-finish-entry="${item.id}">✓ Marcar como terminado</button>`:''}</div><span class="maintenance-result ${item.resultado==='operativo'?'ok':'pending'}">${item.resultado==='operativo'?'Concluido':'En mantenimiento'}</span></article>`).join(''):`<div class="maintenance-empty">No hay mantenimientos registrados para ${economicId?'este económico':'la flota'} en ${year}.<br />Usa <strong>Registrar mantenimiento</strong> para agregar una intervención.</div>`;
 }
 function openMaintenanceDialog(){
   maintenanceForm.reset();
@@ -139,6 +139,28 @@ function openMaintenanceDialog(){
 $('#newMaintenanceButton').onclick=openMaintenanceDialog;
 $('#closeMaintenanceDialog').onclick=$('#cancelMaintenanceButton').onclick=()=>maintenanceDialog.close();
 $('#maintenanceYearFilter').onchange=$('#maintenanceEconomicFilter').onchange=renderMaintenanceHistory;
+const finishMaintenanceDialog=$('#finishMaintenanceDialog'),finishMaintenanceForm=$('#finishMaintenanceForm');
+let finishMaintenanceTarget=null;
+$('#maintenanceList').onclick=event=>{
+  const button=event.target.closest('[data-finish-entry]');
+  if(!button)return;
+  finishMaintenanceTarget={recordId:button.dataset.finishRecord,entryId:button.dataset.finishEntry};
+  finishMaintenanceForm.reset();
+  finishMaintenanceDialog.showModal();
+};
+$('#closeFinishMaintenanceDialog').onclick=$('#cancelFinishMaintenanceButton').onclick=()=>finishMaintenanceDialog.close();
+finishMaintenanceForm.onsubmit=event=>{
+  event.preventDefault();
+  const comment=finishMaintenanceForm.elements.comentario.value.trim();
+  const record=records.find(item=>item.id===finishMaintenanceTarget?.recordId),entry=record?.mantenimientos?.find(item=>item.id===finishMaintenanceTarget?.entryId);
+  if(!record||!entry){toast('No encontré el mantenimiento seleccionado.');finishMaintenanceDialog.close();return}
+  entry.resultado='operativo';
+  entry.comentarioCierre=comment;
+  entry.fechaCierre=new Date().toISOString().slice(0,10);
+  record.estado='operativo';
+  record.observaciones=`Mantenimiento concluido: ${comment}`;
+  save();render();renderMaintenanceHistory();finishMaintenanceDialog.close();toast('Mantenimiento finalizado y económico disponible.');
+};
 maintenanceForm.onsubmit=event=>{
   event.preventDefault();
   const data=Object.fromEntries(new FormData(maintenanceForm)),record=records.find(item=>item.id===data.economicoId);
