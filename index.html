@@ -152,6 +152,7 @@
           <label>Fecha<input name="fecha" type="date" required /></label>
           <label>Tipo de trabajo<select name="tipo" required><option value="Preventivo">Preventivo</option><option value="Correctivo">Correctivo</option><option value="Inspección">Inspección</option><option value="Reparación">Reparación</option></select></label>
           <label>Responsable<input name="responsable" placeholder="Nombre o proveedor" required /></label>
+          <label>Monto estimado<input name="monto" type="number" min="0" step="0.01" placeholder="0.00" required /></label>
           <label>Resultado<select name="resultado" required><option value="mantenimiento">Pendiente / continúa en mantenimiento</option><option value="operativo">Concluido / en condiciones</option></select></label>
           <label class="full-width">Descripción del trabajo<textarea name="descripcion" rows="4" placeholder="Falla detectada, acciones realizadas y piezas utilizadas" required></textarea></label>
         </div>
