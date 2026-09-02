@@ -98,7 +98,10 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item=>item.addEventLis
   document.querySelectorAll('.nav-item[data-view]').forEach(nav=>nav.classList.toggle('active',nav===item));
   if(view==='evidences')renderEvidenceGallery();
   if(view==='maintenance')renderMaintenanceHistory();
+  if(innerWidth<=680){$('#mobileModuleMenu')?.classList.remove('is-open');$('#mobileModuleToggle')?.setAttribute('aria-expanded','false')}
 }));
+
+$('#mobileModuleToggle')?.addEventListener('click',()=>{const menu=$('#mobileModuleMenu'),open=menu.classList.toggle('is-open');$('#mobileModuleToggle').setAttribute('aria-expanded',String(open))});
 
 $('#evidenceGrid').onclick=event=>{
   const id=event.target.dataset.evidenceId;

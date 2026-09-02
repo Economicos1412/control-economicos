@@ -1,2 +1,2 @@
-/* Reserva espacio para la insignia de Netlify en teléfonos. */
-body{padding-bottom:138px}.sidebar{bottom:60px}
+/* Menú desplegable superior para teléfonos. */
+body{padding-bottom:22px}.mobile-module-toggle{display:inline-flex!important;align-items:center;justify-content:center;padding:7px 9px;border:1px solid #c9ddd5;border-radius:7px;background:#fff;color:#176f52;font:900 .65rem/1 inherit;cursor:pointer}.sidebar{top:52px;right:12px;bottom:auto;left:12px;width:auto;height:auto;padding:7px;opacity:0;pointer-events:none;transform:translateY(-10px);transition:opacity .2s ease,transform .2s ease;border:1px solid #315256;border-radius:0 0 12px 12px;box-shadow:0 14px 28px #09232238}.sidebar.is-open{opacity:1;pointer-events:auto;transform:translateY(0)}.side-nav{grid-template-columns:repeat(4,minmax(0,1fr));height:auto}.side-nav .nav-item:not(.active){display:flex}.nav-item,.nav-item.active{min-height:45px}.sidebar .nav-item{font-size:.57rem}
