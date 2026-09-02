@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#102c24" />
     <title>Control de Economicos</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="history.css" />
     <link rel="stylesheet" href="mobile.css" media="(max-width: 680px)" />
     <style>
       .status-chart{justify-content:center;gap:52px;padding-left:20%;padding-right:20%}
@@ -168,6 +169,12 @@
         <div class="maintenance-form-grid"><label class="full-width">Comentario de cierre<textarea name="comentario" rows="4" placeholder="Trabajo realizado, pruebas efectuadas o recomendaciones" required></textarea></label></div>
         <div class="dialog-actions"><button class="button outline" type="button" id="cancelFinishMaintenanceButton">Cancelar</button><button class="button primary" type="submit">Finalizar mantenimiento</button></div>
       </form>
+    </dialog>
+
+    <dialog id="historyDialog" class="history-dialog">
+      <div class="dialog-heading"><div><p class="overline">BITÁCORA DE CAMBIOS</p><h2 id="historyTitle">Historial del económico</h2></div><button class="icon-button" type="button" id="closeHistoryDialog" aria-label="Cerrar">&times;</button></div>
+      <div class="dialog-note">Aquí se registran los movimientos realizados en esta unidad.</div>
+      <div class="history-list" id="historyList"></div>
     </dialog>
 
     <dialog id="imageViewer" class="image-viewer">

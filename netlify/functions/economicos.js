@@ -30,6 +30,7 @@ function normalize(record) {
   output.observaciones = String(record.observaciones ?? '');
   output.photos = Array.isArray(record.photos) ? record.photos : [];
   output.mantenimientos = Array.isArray(record.mantenimientos) ? record.mantenimientos : [];
+  output.historial_cambios = Array.isArray(record.historialCambios) ? record.historialCambios : [];
   if (requiredFields.some(field => !output[field])) throw new Error('Cada económico debe tener todos sus campos obligatorios.');
   if (!['1', '2', '3'].includes(output.categoria)) throw new Error('La categoría solo puede ser 1, 2 o 3.');
   if (!['operativo', 'mantenimiento'].includes(output.estado)) throw new Error('El estado no es válido.');
